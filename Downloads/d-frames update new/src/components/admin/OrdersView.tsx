@@ -62,56 +62,92 @@ export default function OrdersView() {
     fetchOrders();
     
     // Set up real-time subscription for orders table
-    const ordersSubscription = supabase
-      .channel('orders-channel')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'orders' }, 
-        (payload) => {
-          console.log('Real-time INSERT received:', payload);
-          // Add the new order to the existing orders list
-          if (payload.new) {
-            const newOrder = payload.new as Order;
-            setOrders(prevOrders => [newOrder, ...prevOrders]);
+    const setupRealtimeSubscription = async () => {
+      try {
+        // First, remove any existing subscriptions to avoid duplicates
+        const channels = supabase.getChannels();
+        channels.forEach(channel => {
+          if (channel.topic.includes('orders')) {
+            supabase.removeChannel(channel);
           }
-        }
-      )
-      .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'orders' }, 
-        (payload) => {
-          console.log('Real-time UPDATE received:', payload);
-          // Update the modified order in the existing orders list
-          if (payload.new) {
-            const updatedOrder = payload.new as Order;
-            setOrders(prevOrders => 
-              prevOrders.map(order => 
-                order.id === updatedOrder.id ? updatedOrder : order
-              )
-            );
-          }
-        }
-      )
-      .on('postgres_changes', 
-        { event: 'DELETE', schema: 'public', table: 'orders' }, 
-        (payload) => {
-          console.log('Real-time DELETE received:', payload);
-          // Remove the deleted order from the existing orders list
-          if (payload.old) {
-            const deletedOrderId = payload.old.id;
-            setOrders(prevOrders => 
-              prevOrders.filter(order => order.id !== deletedOrderId)
-            );
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Supabase subscription status:', status);
-      });
-      
+        });
+        
+        console.log('Setting up real-time subscription for orders table...');
+        
+        const ordersSubscription = supabase
+          .channel('orders-channel-' + Date.now())
+          .on('postgres_changes', 
+            { event: 'INSERT', schema: 'public', table: 'orders' }, 
+            (payload) => {
+              console.log('Real-time INSERT received:', payload);
+              // Add the new order to the existing orders list
+              if (payload.new) {
+                const newOrder = payload.new as Order;
+                setOrders(prevOrders => {
+                  // Check if order already exists to avoid duplicates
+                  const exists = prevOrders.some(order => order.id === newOrder.id);
+                  if (exists) {
+                    console.log('Order already exists in state, not adding duplicate');
+                    return prevOrders;
+                  }
+                  console.log('Adding new order to state:', newOrder);
+                  return [newOrder, ...prevOrders];
+                });
+              }
+            }
+          )
+          .on('postgres_changes', 
+            { event: 'UPDATE', schema: 'public', table: 'orders' }, 
+            (payload) => {
+              console.log('Real-time UPDATE received:', payload);
+              // Update the modified order in the existing orders list
+              if (payload.new) {
+                const updatedOrder = payload.new as Order;
+                setOrders(prevOrders => 
+                  prevOrders.map(order => 
+                    order.id === updatedOrder.id ? updatedOrder : order
+                  )
+                );
+              }
+            }
+          )
+          .on('postgres_changes', 
+            { event: 'DELETE', schema: 'public', table: 'orders' }, 
+            (payload) => {
+              console.log('Real-time DELETE received:', payload);
+              // Remove the deleted order from the existing orders list
+              if (payload.old) {
+                const deletedOrderId = payload.old.id;
+                setOrders(prevOrders => 
+                  prevOrders.filter(order => order.id !== deletedOrderId)
+                );
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log('Supabase subscription status:', status);
+          });
+          
+        return ordersSubscription;
+      } catch (error) {
+        console.error('Error setting up real-time subscription:', error);
+        return null;
+      }
+    };
+    
+    // Set up the subscription
+    const subscriptionPromise = setupRealtimeSubscription();
+    
     // Clean up subscription when component unmounts
     return () => {
-      supabase.removeChannel(ordersSubscription);
+      subscriptionPromise.then(subscription => {
+        if (subscription) {
+          console.log('Removing subscription on unmount');
+          supabase.removeChannel(subscription);
+        }
+      });
     };
-  }, [filter]);
+  }, []);  // Remove filter dependency to avoid recreating subscription on filter change
   
   const toggleOrderExpand = (orderId: string) => {
     setExpandedOrder(expandedOrder === orderId ? null : orderId);
@@ -223,8 +259,14 @@ export default function OrdersView() {
         throw error;
       }
       
-      console.log('Orders fetched successfully:', data);
-      setOrders(data || []);
+      if (!data || data.length === 0) {
+        console.log('No orders found in database');
+        setOrders([]);
+      } else {
+        console.log(`Orders fetched successfully: ${data.length} orders found`);
+        console.log('First order:', data[0]);
+        setOrders(data);
+      }
     } catch (error) {
       console.error('Exception in fetchOrders:', error);
       // If there's an error, set orders to an empty array
@@ -282,7 +324,10 @@ export default function OrdersView() {
           
           {/* Add a button to manually refresh orders */}
           <button
-            onClick={fetchOrders}
+            onClick={() => {
+              console.log('Manual refresh triggered');
+              fetchOrders();
+            }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center gap-1"
           >
             <RefreshCw className="w-4 h-4" />

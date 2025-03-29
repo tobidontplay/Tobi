@@ -1,0 +1,27 @@
+# D-Frames Environment Setup Instructions
+
+## Create a .env file
+Create a file named '.env' in the root directory of your project with the following content:
+
+```
+# Stripe API Keys - Test Keys for Development
+VITE_STRIPE_PUBLIC_KEY=pk_test_51Qt0v3A0fUxhhN0xUjZjKkTEqpC8XrDYArV2v7mSv2tK44amGGngxLGCMJmOE428624sys5B05RfjqJ94Lkp5G31000QTQr6AP
+VITE_STRIPE_SECRET_KEY=sk_test_51Qt0v3A0fUxhhN0xSzVFqjpsPCLRd9YO0tZ47lk4Qv0SDvz9yoIGYIYAmKOoi1oNrr9LfoDEWJIXMAGraw7FGboH00zuixG7uf
+
+# Supabase Configuration - For local development only
+VITE_SUPABASE_URL=https://okrxrljpuydiuuzjsyqi.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9rcnhybGpwdXlkaXV1empzeXFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY0MzE0MDAsImV4cCI6MjAzMjAwNzQwMH0.yx4NKIe9aNDkDj-0aTqDYcXMxwJHQMrxH8-4xvJyQOI
+
+# Other Environment Variables
+NODE_ENV=development
+```
+
+## Important Security Notes:
+1. This .env file is automatically gitignored and will not be committed to your repository
+2. These are TEST keys and safe to use in development
+3. For production, use different environment variables with your live keys
+4. Never commit API keys to version control
+
+## After Setup:
+- Delete this instruction file after you've created your .env file
+- You can now run your application with the proper environment variables
