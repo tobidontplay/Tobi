@@ -212,7 +212,7 @@ CREATE POLICY "Admins and managers can modify order data"
       AND employees.role IN ('admin', 'manager')
     )
   );
-
++
 -- Create indexes for better performance
 CREATE INDEX idx_customers_email ON customers(email);
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
